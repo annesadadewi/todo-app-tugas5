@@ -1,10 +1,27 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import routes from './routes/index';
+import { randomUUID } from 'crypto';
 
 const app = express();
 
-app.use(cors());
+// Middleware CORS dengan opsi exposedHeaders
+app.use(cors({ exposedHeaders: ['X-Request-Id'] }));
+
+// Middleware untuk membuat X-Request-Id
+app.use((req, res, next) => {
+  const requestId = randomUUID();
+  res.locals.requestId = requestId;
+  res.setHeader('X-Request-Id', requestId);
+  next();
+});
+
+// Middleware untuk mencetak log request
+app.use((req, res, next) => {
+  console.log(`[${res.locals.requestId}] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 app.use(express.json());
 
 // Route utama - cek apakah server berjalan
@@ -21,7 +38,6 @@ app.use((req: Request, res: Response) => {
 });
 
 // Global Error Handler - menangkap error yang tidak tertangani
-// Harus ada 4 parameter (err, req, res, next) agar Express megenalinya sebagai error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('Terjadi error:', err.message);
   res.status(500).json({ success: false, message: 'Terjadi kesalahan pada server.' });
